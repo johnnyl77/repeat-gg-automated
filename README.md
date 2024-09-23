@@ -34,7 +34,9 @@ Steps:
 
    Replace **xxx** with your user.
    <br/>
+   <br/>
    Replace **yyy** with the path to your chromedriver-win64 location. This should be located in the same folder that you unzipped earlier.
+   <br/>
    <br/>
    Replace your profile with the correct one. This can be found in the same directory as your profile path. They are usually Default, Profile 1, Profile 2, Profile 3, etc
 
