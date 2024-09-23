@@ -27,7 +27,9 @@ Steps:
 5. Inside your .env file you want to make sure you have 3 variables:
 
    PROFILE_PATH=C:\Users\xxx\AppData\Local\Google\Chrome\User Data
+   
    PROFILE_NAME=Default
+   
    CHROMEDRIVER_PATH=C:\yyy\chromedriver-win64\chromedriver.exe
 
    Replace **xxx** with your user.
