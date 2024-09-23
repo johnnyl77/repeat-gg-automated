@@ -34,6 +34,7 @@ Steps:
 
    Replace **xxx** with your user.
    Replace **yyy** with the path to your chromedriver-win64 location. This should be located in the same folder that you unzipped earlier.
+   Replace your profile with the correct one. This can be found in the same directory as your profile path. They are usually Default, Profile 1, Profile 2, Profile 3, etc
 
 6. Log into your account on repeat.gg if not already
 
