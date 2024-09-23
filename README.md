@@ -34,7 +34,6 @@ Steps:
 
    Replace **xxx** with your user.
    <br/>
-   <br/>
    Replace **yyy** with the path to your chromedriver-win64 location. This should be located in the same folder that you unzipped earlier.
    <br/>
    <br/>
