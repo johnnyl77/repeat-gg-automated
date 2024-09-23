@@ -1,4 +1,6 @@
-![This is the repeat-gg logo](imgs/logo.png)
+<p style="text-align: center;">
+  <img src="imgs/logo.png" alt="This is the repeat-gg logo" style="width: 50%;"/>
+</p>
 
 # Repeat.gg Automated
 
