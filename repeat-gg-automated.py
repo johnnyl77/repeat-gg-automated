@@ -43,7 +43,10 @@ driver = webdriver.Chrome(service=service, options=options)
 
 # Open a website to test
 driver.get("https://www.repeat.gg/mobile/brawl-stars")
+
+# Other example formats:
 # driver.get("https://www.repeat.gg/pc/league-of-legends")
+# driver.get("https://www.repeat.gg/pc/fortnite")
 
 
 # Allow the page to load
