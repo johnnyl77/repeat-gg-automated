@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="150" height="150" src="imgs/logo.png" alt="This is the repeat-gg logo"/>
+  <img src="imgs/logo.png" alt="This is the repeat-gg logo"/>
 </p>
 
 # Repeat.gg Automated
