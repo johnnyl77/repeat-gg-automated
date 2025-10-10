@@ -4,41 +4,77 @@
 
 # Repeat.gg Automated
 
-This program helps automate the process of joining tourneys using Selenium.
+Automatically join free tournaments on repeat.gg. Runs 24/7 on GitHub's servers for free (no PC needed, no credit card required).
 
-Steps:
+## 🚀 Quick Start
 
-1. Make sure you have the latest version of Google Chrome installed. If not then it can be installed here: https://www.google.com/chrome/
+**[👉 Follow the QUICK_START.md guide](QUICK_START.md)** ← 5 minute setup!
 
-2. Install the same Chrome Driver version as Google Chrome. If not then install it through this site: https://googlechromelabs.github.io/chrome-for-testing/#stable
+Or read the detailed guide: **[GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)**
 
-   ![Image of displaying the correct chromedriver version](imgs/img1.png)
+---
 
-   You can check your Google Chrome version by typing **chrome://version/** into the search bar. It is highlighted in yellow.
+## ✨ Features
 
-   ![Image of displaying the correct chromedriver version](imgs/img2.png)
+✅ **100% Free** - No payment info required  
+✅ **Automatic** - Runs every 6 hours  
+✅ **Cloud-based** - No local computer needed  
+✅ **Easy Setup** - Just upload to GitHub  
 
-3. Unzip and place the chromedriver-win64 folder version inside the same folder as your other files.
+---
 
-   ![Image of directory](imgs/img3.png)
+## 📝 Setup Summary
 
-4. Create a .env file and place it inside the same directory as your chromedriver folder.
+1. Export your cookies: `python export_cookies.py`
+2. Upload code to GitHub
+3. Add cookies as a secret
+4. Enable GitHub Actions
 
-5. Inside your .env file you want to make sure you have 3 variables:
+**That's it!** See [QUICK_START.md](QUICK_START.md) for step-by-step instructions.
 
-   PROFILE_PATH=C:\Users\xxx\AppData\Local\Google\Chrome\User Data
-   <br/>
-   PROFILE_NAME=Default
-   <br/>
-   CHROMEDRIVER_PATH=C:\yyy\chromedriver-win64\chromedriver.exe
+---
 
-   Replace **xxx** with your user.
-   <br/>
-   Replace **yyy** with the path to your chromedriver-win64 location. This should be located in the same folder that you unzipped earlier.
-   <br/>
-   <br/>
-   Replace your profile with the correct one. This can be found in the same directory as your profile path. They are usually Default, Profile 1, Profile 2, Profile 3, etc
+## 🎮 Changing the Game
 
-6. Log into your account on repeat.gg if not already
+Edit line 224 in `repeat-gg-automated.py`:
 
-7. Run the repeat-gg-automated.py file
+```python
+driver.get("https://www.repeat.gg/mobile/brawl-stars")
+```
+
+Change to:
+- `https://www.repeat.gg/pc/league-of-legends`
+- `https://www.repeat.gg/pc/fortnite`
+- Or any other game on repeat.gg
+
+---
+
+## 🔧 Managing It
+
+**Run manually (test):**
+- Go to Actions tab → Click workflow → "Run workflow"
+
+**View results:**
+- Actions tab → Click any run to see logs
+
+**Update cookies (when they expire):**
+1. Run `python export_cookies.py` locally
+2. Go to Settings → Secrets → Actions
+3. Update `REPEAT_GG_COOKIES` secret
+
+**Change schedule:**
+- Edit `.github/workflows/tournament-automation.yml`
+
+**Pause automation:**
+- Comment out the schedule lines in the workflow file
+
+---
+
+## 📊 Usage Stats
+
+- **Free minutes/month:** 2000+
+- **Used per run:** ~2 minutes
+- **Runs per month (every 6 hours):** ~120
+- **Monthly usage:** ~240 minutes (12% of quota)
+
+**You have plenty of free quota!** 🎉

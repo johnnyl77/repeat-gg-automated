@@ -1,2 +1,4 @@
 .\env
 chromedriver-win64/
+repeat_gg_cookies.txt
+chrome_automation_profile/
