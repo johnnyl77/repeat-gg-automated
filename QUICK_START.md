@@ -1,10 +1,12 @@
 # 🎮 Quick Start - Get Running in 5 Minutes
 
-## Step 1: Export Your Cookies
-```bash
-python export_cookies.py
-```
-This creates `repeat_gg_cookies.txt` - you'll need this!
+## Step 1: Get Your PHPSESSID
+1. Open Chrome and go to `https://www.repeat.gg`
+2. Log in with your Google account
+3. Press `F12` to open Developer Tools
+4. Click **"Application"** tab → **"Cookies"** → **"https://www.repeat.gg"**
+5. Find the cookie named **"PHPSESSID"**
+6. Copy the **value** (the long string)
 
 ---
 
@@ -19,13 +21,13 @@ This creates `repeat_gg_cookies.txt` - you'll need this!
 
 ---
 
-## Step 3: Add Cookies Secret
+## Step 3: Add PHPSESSID Secret
 
 1. In your repo, click **"Settings"** tab
 2. **"Secrets and variables"** → **"Actions"**
 3. **"New repository secret"**
-4. Name: `REPEAT_GG_COOKIES`
-5. Paste entire contents from `repeat_gg_cookies.txt`
+4. Name: `REPEAT_GG_SESSION_TOKEN`
+5. Paste the PHPSESSID value from Step 1
 6. Click **"Add secret"**
 
 ---
@@ -46,7 +48,7 @@ This creates `repeat_gg_cookies.txt` - you'll need this!
 It will now run automatically every 6 hours forever!
 
 **View runs:** Go to Actions tab anytime  
-**Update cookies:** Settings → Secrets → Update `REPEAT_GG_COOKIES`  
+**Update token:** Settings → Secrets → Update `REPEAT_GG_SESSION_TOKEN`  
 **Change schedule:** Edit `.github/workflows/tournament-automation.yml`
 
 ---

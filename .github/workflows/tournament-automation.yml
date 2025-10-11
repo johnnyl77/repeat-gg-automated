@@ -53,7 +53,7 @@ jobs:
       
       - name: Run tournament automation
         env:
-          REPEAT_GG_COOKIES: ${{ secrets.REPEAT_GG_COOKIES }}
+          REPEAT_GG_SESSION_TOKEN: ${{ secrets.REPEAT_GG_SESSION_TOKEN }}
           K_SERVICE: "github-actions"  # This triggers GitHub Actions mode in the script
           CHROMEDRIVER_PATH: "/usr/local/bin/chromedriver"
         run: |

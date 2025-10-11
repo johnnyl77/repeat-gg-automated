@@ -21,76 +21,55 @@ HEADLESS_MODE = True  # Change to False to see the browser while it works
 # Check if running in GitHub Actions (or other cloud environment)
 IS_GITHUB_ACTIONS = os.getenv("K_SERVICE") is not None  # Set by cloud environments
 
-def load_cookies_from_env(driver):
-    """Load cookies from environment variable (for GitHub Actions)"""
+def authenticate_with_session_token(driver):
+    """Authenticate using session token from environment variable"""
     try:
-        import base64
-        import json
+        session_token = os.getenv("REPEAT_GG_SESSION_TOKEN")
         
-        cookies_base64 = os.getenv("REPEAT_GG_COOKIES")
-        
-        if not cookies_base64:
-            print("⚠ No cookies found in environment variables")
-            print("💡 Run export_cookies.py locally and add REPEAT_GG_COOKIES to GitHub secrets")
+        if not session_token:
+            print("⚠ No session token found in environment variables")
+            print("💡 Add REPEAT_GG_SESSION_TOKEN to GitHub secrets")
             return False
         
-        print("Loading cookies from environment variable...")
+        print("Authenticating with session token...")
         
-        # Decode base64 and parse JSON
-        cookies_json = base64.b64decode(cookies_base64).decode()
-        cookies = json.loads(cookies_json)
-        
-        # Navigate to repeat.gg first (required to set cookies for the domain)
+        # Navigate to repeat.gg first
         driver.get("https://www.repeat.gg")
-        time.sleep(3)  # Wait for page to fully load
+        time.sleep(3)
         
-        # Add each cookie to the browser
-        loaded_count = 0
-        failed_cookies = []
+        # Set the session token as a cookie (most reliable method)
+        driver.add_cookie({
+            'name': 'PHPSESSID',
+            'value': session_token,
+            'domain': 'www.repeat.gg',
+            'path': '/',
+            'secure': True,
+            'httpOnly': True
+        })
         
-        for cookie in cookies:
-            try:
-                # Remove expiry if it's too far in the future (Selenium limitation)
-                if 'expiry' in cookie:
-                    cookie['expiry'] = int(cookie['expiry'] / 1000000 - 11644473600)  # Convert Chrome to Unix timestamp
-                    if cookie['expiry'] > 2147483647:  # Max int32
-                        del cookie['expiry']
-                
-                # Fix domain format - Selenium doesn't like leading dots sometimes
-                if 'domain' in cookie and cookie['domain'].startswith('.'):
-                    # Try without the leading dot first
-                    original_domain = cookie['domain']
-                    cookie['domain'] = cookie['domain'].lstrip('.')
-                    try:
-                        driver.add_cookie(cookie)
-                        loaded_count += 1
-                    except:
-                        # If that fails, try with the original domain
-                        cookie['domain'] = original_domain
-                        driver.add_cookie(cookie)
-                        loaded_count += 1
-                else:
-                    driver.add_cookie(cookie)
-                    loaded_count += 1
-                    
-            except Exception as e:
-                failed_cookies.append(f"{cookie.get('name', 'unknown')}: {str(e)}")
-        
-        print(f"✓ Loaded {loaded_count}/{len(cookies)} cookies successfully!")
-        
-        if failed_cookies:
-            print(f"⚠ {len(failed_cookies)} cookies failed to load:")
-            for fail in failed_cookies[:5]:  # Show first 5 failures
-                print(f"  - {fail}")
-        
-        # Refresh the page to activate cookies
+        # Refresh to activate authentication
         driver.refresh()
-        time.sleep(2)
+        time.sleep(3)
         
-        return loaded_count > 0
+        # Verify authentication
+        try:
+            driver.get("https://www.repeat.gg/mobile/brawl-stars")
+            time.sleep(3)
+            
+            # Check if we're logged in by looking for login elements
+            login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
+            if not login_elements:
+                print("✓ Successfully authenticated!")
+                return True
+            else:
+                print("⚠ Authentication failed - still seeing login elements")
+                return False
+        except Exception as e:
+            print(f"⚠ Could not verify authentication: {e}")
+            return False
         
     except Exception as e:
-        print(f"⚠ Cookie loading failed: {e}")
+        print(f"⚠ Session token authentication failed: {e}")
         return False
 
 # Function to close all Chrome processes and clean up lock files
@@ -259,36 +238,25 @@ driver.get("https://www.repeat.gg/mobile/brawl-stars")
 # Allow the page to load initially
 time.sleep(3)
 
-# If running in GitHub Actions, try to authenticate
+# If running in GitHub Actions, authenticate with session token
 if IS_GITHUB_ACTIONS:
     print("\n" + "="*70)
-    print("  GitHub Actions: Attempting authentication...")
+    print("  GitHub Actions: Authenticating...")
     print("="*70)
     
-    # First try loading cookies
-    cookies_loaded = load_cookies_from_env(driver)
+    auth_success = authenticate_with_session_token(driver)
     
-    # Navigate to the tournament page
-    driver.get("https://www.repeat.gg/mobile/brawl-stars")
-    time.sleep(5)
-    
-    # Check if we're actually logged in by looking for login button
-    try:
-        # If we see a login button, cookies didn't work
-        login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
-        if login_elements:
-            print("⚠ Cookie authentication failed - login required")
-            print("\n" + "="*70)
-            print("  SOLUTION: This site requires actual login, not just cookies")
-            print("="*70)
-            print("\nOptions:")
-            print("1. Run this script LOCALLY using your Chrome profile (recommended)")
-            print("2. Or add LOGIN automation with username/password in GitHub secrets")
-            print("\nFor now, continuing without authentication to show what would happen...")
-        else:
-            print("✓ Successfully authenticated!")
-    except:
-        pass  # Assume we're logged in if we can't find login elements
+    if not auth_success:
+        print("\n" + "="*70)
+        print("  AUTHENTICATION FAILED")
+        print("="*70)
+        print("\nTo fix this:")
+        print("1. Get your PHPSESSID from repeat.gg cookies")
+        print("2. Add REPEAT_GG_SESSION_TOKEN to your GitHub repository secrets")
+        print("3. Re-run this workflow")
+        print("\nContinuing without authentication...")
+    else:
+        print("✓ Authentication successful!")
 
 print("\n" + "="*70)
 print("  Starting tournament search and auto-join...")
