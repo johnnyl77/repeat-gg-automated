@@ -1,12 +1,50 @@
-# 🎮 Quick Start - Get Running in 5 Minutes
+# 🎮 Quick Start - Local Setup (2 Minutes!)
 
-## Step 1: Get Your PHPSESSID
-1. Open Chrome and go to `https://www.repeat.gg`
-2. Log in with your Google account
-3. Press `F12` to open Developer Tools
-4. Click **"Application"** tab → **"Cookies"** → **"https://www.repeat.gg"**
-5. Find the cookie named **"PHPSESSID"**
-6. Copy the **value** (the long string)
+## Step 1: Install Dependencies
+
+Open a terminal in the project folder and run:
+
+```bash
+pip install -r requirements.txt
+```
+
+---
+
+## Step 2: Run Setup Script
+
+```bash
+python setup_profile.py
+```
+
+A Chrome window will open. Log into repeat.gg, then press Enter in the terminal.
+
+---
+
+## Step 3: Run Automation
+
+```bash
+python repeat-gg-automated.py
+```
+
+Done! It will automatically join tournaments and claim prizes.
+
+---
+
+# 🌐 Cloud Setup (GitHub Actions - 5 Minutes)
+
+Want it to run 24/7 in the cloud for free? Follow these steps:
+
+## Step 1: Export Your Authentication
+
+First, set up locally (from steps above), then run:
+
+```bash
+python export_auth_for_github.py
+```
+
+This will create `github_auth_data.txt` with your complete authentication data.
+
+**Why this method?** It captures ALL cookies, localStorage, and sessionStorage - much more reliable than individual cookies!
 
 ---
 
@@ -21,14 +59,14 @@
 
 ---
 
-## Step 3: Add PHPSESSID Secret
+## Step 3: Add Authentication Secret
 
 1. In your repo, click **"Settings"** tab
 2. **"Secrets and variables"** → **"Actions"**
 3. **"New repository secret"**
-4. Name: `REPEAT_GG_SESSION_TOKEN`
-5. Paste the PHPSESSID value from Step 1
-6. Click **"Add secret"**
+   - Name: `REPEAT_GG_AUTH_DATA`
+   - Value: Copy the entire long string from `github_auth_data.txt`
+4. Click **"Add secret"**
 
 ---
 
@@ -48,7 +86,7 @@
 It will now run automatically every 6 hours forever!
 
 **View runs:** Go to Actions tab anytime  
-**Update token:** Settings → Secrets → Update `REPEAT_GG_SESSION_TOKEN`  
+**Update auth:** Run `export_auth_for_github.py` again and update the `REPEAT_GG_AUTH_DATA` secret  
 **Change schedule:** Edit `.github/workflows/tournament-automation.yml`
 
 ---
@@ -59,6 +97,17 @@ It will now run automatically every 6 hours forever!
 - Each run takes ~2 minutes
 - Running every 6 hours = ~240 minutes/month
 - You're using 12% of your free quota
+
+---
+
+## 🔄 When Auth Expires
+
+If GitHub Actions stops working after a while:
+1. Locally, run: `python export_auth_for_github.py`
+2. Update `REPEAT_GG_AUTH_DATA` secret in GitHub with the new value
+3. Done! The automation will work again
+
+**This new method is MUCH more reliable than copying individual cookies!**
 
 **Need help?** Check [GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md) for detailed instructions.
 

@@ -1,4 +1,7 @@
-.\env
+.env
 chromedriver-win64/
 repeat_gg_cookies.txt
 chrome_automation_profile/
+*.log
+github_auth_data.txt
+github_auth_data_debug.json

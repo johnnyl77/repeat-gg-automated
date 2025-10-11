@@ -6,8 +6,6 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
 import os
-import signal
-import subprocess
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,16 +20,92 @@ HEADLESS_MODE = True  # Change to False to see the browser while it works
 IS_GITHUB_ACTIONS = os.getenv("K_SERVICE") is not None  # Set by cloud environments
 
 def authenticate_with_session_token(driver):
-    """Authenticate using session token from environment variable"""
+    """Authenticate using complete auth data or individual cookies from environment variable"""
     try:
-        # Get individual cookie values from environment variables
+        import json
+        import base64
+        
+        # Check for complete auth data first (new method - more reliable)
+        auth_data_b64 = os.getenv("REPEAT_GG_AUTH_DATA")
+        
+        if auth_data_b64:
+            print("Using complete authentication data (recommended method)...")
+            try:
+                # Decode base64 and parse JSON
+                auth_json = base64.b64decode(auth_data_b64).decode()
+                auth_data = json.loads(auth_json)
+                
+                # Navigate to repeat.gg first
+                driver.get("https://www.repeat.gg")
+                time.sleep(3)
+                
+                # Set all cookies
+                cookies = auth_data.get("cookies", [])
+                for cookie in cookies:
+                    try:
+                        # Remove problematic keys that Selenium doesn't accept
+                        cookie_to_add = {k: v for k, v in cookie.items() if k not in ['sameSite', 'expiry']}
+                        driver.add_cookie(cookie_to_add)
+                    except Exception as e:
+                        # Skip cookies that can't be set
+                        pass
+                
+                print(f"✓ Set {len(cookies)} cookies")
+                
+                # Set localStorage
+                local_storage = auth_data.get("localStorage", {})
+                for key, value in local_storage.items():
+                    try:
+                        # Escape single quotes in the value
+                        escaped_value = value.replace("'", "\\'")
+                        driver.execute_script(f"localStorage.setItem('{key}', '{escaped_value}');")
+                    except:
+                        pass
+                
+                print(f"✓ Set {len(local_storage)} localStorage items")
+                
+                # Set sessionStorage
+                session_storage = auth_data.get("sessionStorage", {})
+                for key, value in session_storage.items():
+                    try:
+                        escaped_value = value.replace("'", "\\'")
+                        driver.execute_script(f"sessionStorage.setItem('{key}', '{escaped_value}');")
+                    except:
+                        pass
+                
+                print(f"✓ Set {len(session_storage)} sessionStorage items")
+                
+                # Refresh to activate authentication
+                driver.refresh()
+                time.sleep(5)
+                
+                # Navigate to tournament page
+                driver.get("https://www.repeat.gg/mobile/brawl-stars")
+                time.sleep(5)
+                
+                # Check authentication
+                login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
+                
+                if not login_elements:
+                    print("✓ Successfully authenticated with complete auth data!")
+                    return True
+                else:
+                    print("⚠ Complete auth data method failed - login elements still present")
+                    return False
+                    
+            except Exception as e:
+                print(f"⚠ Error using complete auth data: {e}")
+                print("Falling back to individual cookies method...")
+        
+        # Fallback to individual cookies (old method - less reliable)
         php_session = os.getenv("REPEAT_GG_PHP_SESSION")
         hj_session = os.getenv("REPEAT_GG_HJ_SESSION")
         hj_user_session = os.getenv("REPEAT_GG_HJ_USER_SESSION")
         
         if not any([php_session, hj_session, hj_user_session]):
             print("⚠ No session tokens found in environment variables")
-            print("💡 Add REPEAT_GG_PHP_SESSION, REPEAT_GG_HJ_SESSION, and REPEAT_GG_HJ_USER_SESSION to GitHub secrets")
+            print("💡 Run export_auth_for_github.py locally and add REPEAT_GG_AUTH_DATA to GitHub secrets")
+            print("   (Or add individual cookies: REPEAT_GG_PHP_SESSION, REPEAT_GG_HJ_SESSION, REPEAT_GG_HJ_USER_SESSION)")
             return False
         
         print("Authenticating with session tokens...")
@@ -110,14 +184,22 @@ def authenticate_with_session_token(driver):
         driver.get("https://www.repeat.gg/mobile/brawl-stars")
         time.sleep(5)
         
-        # Check if we're logged in by looking for user-specific elements
+        # More comprehensive authentication check
         try:
-            # Look for elements that indicate we're logged in
-            user_elements = driver.find_elements(By.XPATH, "//*[contains(@class, 'user') or contains(@class, 'profile') or contains(@class, 'avatar')]")
+            # Check for login elements
             login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
+            
+            # Check for user-specific elements
+            user_elements = driver.find_elements(By.XPATH, "//*[contains(@class, 'user') or contains(@class, 'profile') or contains(@class, 'avatar')]")
+            
+            # Check if we can access protected content by looking for tournament join buttons
+            join_buttons = driver.find_elements(By.XPATH, "//button[contains(text(), 'Join') or contains(text(), 'join')]")
             
             if not login_elements and len(user_elements) > 0:
                 print("✓ Successfully authenticated!")
+                return True
+            elif not login_elements and len(join_buttons) > 0:
+                print("✓ No login elements found and join buttons present - assuming authenticated")
                 return True
             elif not login_elements:
                 print("✓ No login elements found - assuming authenticated")
@@ -125,6 +207,19 @@ def authenticate_with_session_token(driver):
             else:
                 print("⚠ Authentication failed - still seeing login elements")
                 print("This might mean the session tokens have expired or are invalid")
+                
+                # Try to get more info about the current state
+                try:
+                    current_url = driver.current_url
+                    print(f"Current URL: {current_url}")
+                    
+                    # Check if we're being redirected to login
+                    if "login" in current_url.lower() or "auth" in current_url.lower():
+                        print("⚠ Redirected to login page - authentication definitely failed")
+                        return False
+                except:
+                    pass
+                
                 return False
         except Exception as e:
             print(f"⚠ Could not verify authentication: {e}")
@@ -134,125 +229,106 @@ def authenticate_with_session_token(driver):
         print(f"⚠ Session token authentication failed: {e}")
         return False
 
-# Function to close all Chrome processes and clean up lock files
-def close_chrome_processes():
+def test_tournament_join(driver):
+    """Test if we can actually join a tournament to verify authentication"""
     try:
-        # Use taskkill to force close all Chrome processes
-        subprocess.run(['taskkill', '/F', '/IM', 'chrome.exe'], 
-                      stdout=subprocess.DEVNULL, 
-                      stderr=subprocess.DEVNULL)
-        print("Closed all Chrome processes")
-    except Exception as e:
-        print(f"Note: No Chrome processes to close or error closing: {e}")
-
-def remove_chrome_lock_files(profile_path, profile_name):
-    """Remove Chrome lock files to prevent profile conflicts"""
-    try:
-        import glob
-        # Lock files to remove
-        profile_dir = os.path.join(profile_path, profile_name)
-        lock_files = [
-            os.path.join(profile_path, "SingletonLock"),
-            os.path.join(profile_path, "lockfile"),
-            os.path.join(profile_dir, "SingletonLock"),
-            os.path.join(profile_dir, "lockfile")
-        ]
+        print("Testing tournament join capability...")
         
-        for lock_file in lock_files:
-            if os.path.exists(lock_file):
-                try:
-                    os.remove(lock_file)
-                    print(f"Removed lock file: {lock_file}")
-                except:
-                    pass
-    except Exception as e:
-        print(f"Note: Could not remove lock files: {e}")
-
-def copy_login_session(source_profile_path, source_profile_name, dest_profile_path):
-    """Copy login session from Profile 6 to automation profile for auto-login"""
-    try:
-        import shutil
-        source_dir = os.path.join(source_profile_path, source_profile_name)
+        # Find the first tournament with a join button
+        tournament_elements = driver.find_elements(By.CSS_SELECTOR, '[data-testid="tournament row"]')
         
-        # Files to copy for login session (cookies, local storage, etc.)
-        files_to_copy = [
-            "Cookies",
-            "Network\\Cookies",
-            "Local Storage",
-            "Session Storage",
-            "IndexedDB",
-            "Preferences",
-            "Secure Preferences"
-        ]
+        if not tournament_elements:
+            print("⚠ No tournaments found to test")
+            return False
         
-        copied_count = 0
-        for file_name in files_to_copy:
-            source_file = os.path.join(source_dir, file_name)
-            dest_file = os.path.join(dest_profile_path, "Default", file_name)
+        # Try to click the first tournament
+        first_tournament = tournament_elements[0]
+        tournament_link = first_tournament.get_attribute("href")
+        
+        if not tournament_link:
+            print("⚠ No tournament link found")
+            return False
+        
+        # Open tournament in new tab
+        driver.execute_script(f"window.open('{tournament_link}', '_blank');")
+        time.sleep(3)
+        
+        # Switch to new tab
+        window_handles = driver.window_handles
+        if len(window_handles) > 1:
+            driver.switch_to.window(window_handles[1])
             
-            # Create destination directory if needed
-            dest_file_dir = os.path.dirname(dest_file)
-            if not os.path.exists(dest_file_dir):
-                os.makedirs(dest_file_dir, exist_ok=True)
+            # Look for join button
+            try:
+                join_button = driver.find_element(By.TAG_NAME, 'button')
+                join_button.click()
+                time.sleep(2)
+                
+                # Check if we get a login error
+                login_error = driver.find_elements(By.XPATH, "//*[contains(text(), 'Login') or contains(text(), 'log in')]")
+                
+                if login_error:
+                    print("⚠ Tournament join test failed - login required")
+                    driver.close()
+                    driver.switch_to.window(window_handles[0])
+                    return False
+                else:
+                    print("✓ Tournament join test successful - authentication working")
+                    driver.close()
+                    driver.switch_to.window(window_handles[0])
+                    return True
+                    
+            except Exception as e:
+                print(f"⚠ Tournament join test error: {e}")
+                driver.close()
+                driver.switch_to.window(window_handles[0])
+                return False
+        else:
+            print("⚠ Could not open tournament tab")
+            return False
             
-            # Copy file or directory
-            if os.path.exists(source_file):
-                try:
-                    if os.path.isfile(source_file):
-                        shutil.copy2(source_file, dest_file)
-                        copied_count += 1
-                    elif os.path.isdir(source_file):
-                        if os.path.exists(dest_file):
-                            shutil.rmtree(dest_file)
-                        shutil.copytree(source_file, dest_file)
-                        copied_count += 1
-                except Exception as e:
-                    pass  # Skip files that can't be copied
-        
-        if copied_count > 0:
-            print(f"✓ Copied login session from {source_profile_name} to automation profile")
-            return True
-        return False
     except Exception as e:
-        print(f"Note: Could not copy login session: {e}")
+        print(f"⚠ Tournament join test failed: {e}")
         return False
 
 # Set up paths based on environment
 if IS_GITHUB_ACTIONS:
     print("Running in GitHub Actions environment")
-    PROFILE_PATH = None
-    PROFILE_NAME = None
     CHROMEDRIVER_PATH = "/usr/local/bin/chromedriver"  # Linux path
 else:
-    PROFILE_PATH = os.getenv("PROFILE_PATH")
-    PROFILE_NAME = os.getenv("PROFILE_NAME")
+    # Local: Get ChromeDriver path from environment or use default
     CHROMEDRIVER_PATH = os.getenv("CHROMEDRIVER_PATH")
     
-    # Debug: Print paths to verify they're loaded
-    print(f"Profile Path: {PROFILE_PATH}")
-    print(f"Profile Name: {PROFILE_NAME}")
-    print(f"ChromeDriver Path: {CHROMEDRIVER_PATH}")
+    if not CHROMEDRIVER_PATH:
+        # Try to find chromedriver in common locations
+        possible_paths = [
+            "./chromedriver-win64/chromedriver.exe",
+            "chromedriver.exe",
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                CHROMEDRIVER_PATH = path
+                break
+    
+    if CHROMEDRIVER_PATH:
+        print(f"Using ChromeDriver: {CHROMEDRIVER_PATH}")
+    else:
+        print("⚠ ChromeDriver path not found!")
+        print("Please set CHROMEDRIVER_PATH in .env or place chromedriver.exe in the project folder")
 
 # Set up Chrome options
 options = webdriver.ChromeOptions()
 
-# Set up profile based on environment
-if IS_GITHUB_ACTIONS:
-    # In GitHub Actions, use a fresh profile (will load cookies from environment)
-    automation_profile = os.path.join(os.getcwd(), "chrome_automation_profile")
-    if not os.path.exists(automation_profile):
-        os.makedirs(automation_profile)
-    print("Using fresh profile for GitHub Actions")
+# Set up automation profile (same for local and GitHub Actions)
+automation_profile = os.path.join(os.getcwd(), "chrome_automation_profile")
+if not os.path.exists(automation_profile):
+    os.makedirs(automation_profile)
+    if not IS_GITHUB_ACTIONS:
+        print(f"Created automation profile: {automation_profile}")
+        print("💡 Run setup_profile.py first if you haven't logged in yet!")
 else:
-    # Local: Use automation profile and copy cookies from Profile 6
-    automation_profile = os.path.join(os.getcwd(), "chrome_automation_profile")
-    if not os.path.exists(automation_profile):
-        os.makedirs(automation_profile)
-        print(f"Created automation profile directory: {automation_profile}")
-    
-    # Copy login session from Profile 6 to automation profile for auto-login
-    print("Copying login session from Profile 6...")
-    copy_login_session(PROFILE_PATH, PROFILE_NAME, automation_profile)
+    if not IS_GITHUB_ACTIONS:
+        print(f"Using saved profile: {automation_profile}")
 
 options.add_argument(f"--user-data-dir={automation_profile}")
 
@@ -313,12 +389,19 @@ if IS_GITHUB_ACTIONS:
         print("  AUTHENTICATION FAILED")
         print("="*70)
         print("\nTo fix this:")
-        print("1. Get your PHPSESSID from repeat.gg cookies")
-        print("2. Add REPEAT_GG_SESSION_TOKEN to your GitHub repository secrets")
+        print("1. Get fresh cookies from repeat.gg")
+        print("2. Add REPEAT_GG_PHP_SESSION, REPEAT_GG_HJ_SESSION, and REPEAT_GG_HJ_USER_SESSION to GitHub secrets")
         print("3. Re-run this workflow")
         print("\nContinuing without authentication...")
     else:
         print("✓ Authentication successful!")
+        
+        # Test if we can actually join tournaments
+        join_test_success = test_tournament_join(driver)
+        if not join_test_success:
+            print("\n⚠ WARNING: Authentication passed but tournament join test failed!")
+            print("This means the session tokens may be expired or incomplete.")
+            print("You may need to get fresh cookies from repeat.gg")
 
 print("\n" + "="*70)
 print("  Starting tournament search and auto-join...")
