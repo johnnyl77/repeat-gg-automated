@@ -46,16 +46,15 @@ This program helps automate the process of joining tourneys using Selenium.
    pip install -r requirements.txt
    ```
 
-8. Run the repeat-gg-automated.py file:
-   ```bash
-   python repeat-gg-automated.py
-   ```
+8. Run the automation:
+   - **Double-click `run_automation.bat`** to start the automation
+   - Or run directly: `python repeat-gg-automated.py`
 
 ---
 
 ## 🤖 Automating with Windows Task Scheduler
 
-You can set this up to run automatically in the background every few hours using the included `run_automation.bat` file.
+You can set this up to run automatically in the background every few hours using the included `run_automation.bat` file. When scheduled through Task Scheduler, it will run in the background without disrupting your current window focus.
 
 ### Step-by-Step Setup:
 
@@ -111,6 +110,8 @@ The task will now run automatically at your scheduled times in the background!
 
 ### Tips:
 
-- Set `HEADLESS_MODE = True` in the script (line 18) to run invisibly
+- **Runs in background:** When scheduled through Task Scheduler, the console runs in the background and won't steal focus from your current window
+- **For testing manually:** Just double-click `run_automation.bat` to see it work
+- Set `HEADLESS_MODE = True` in the script (line 18) for invisible browser
 - Your computer must be on for the task to run
 - Check Task Scheduler's "History" tab to see if tasks ran successfully
