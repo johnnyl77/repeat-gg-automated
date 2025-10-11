@@ -24,54 +24,64 @@ IS_GITHUB_ACTIONS = os.getenv("K_SERVICE") is not None  # Set by cloud environme
 def authenticate_with_session_token(driver):
     """Authenticate using session token from environment variable"""
     try:
-        session_token = os.getenv("REPEAT_GG_SESSION_TOKEN")
+        # Get individual cookie values from environment variables
+        php_session = os.getenv("REPEAT_GG_PHP_SESSION")
+        hj_session = os.getenv("REPEAT_GG_HJ_SESSION")
+        hj_user_session = os.getenv("REPEAT_GG_HJ_USER_SESSION")
         
-        if not session_token:
-            print("⚠ No session token found in environment variables")
-            print("💡 Add REPEAT_GG_SESSION_TOKEN to GitHub secrets")
+        if not any([php_session, hj_session, hj_user_session]):
+            print("⚠ No session tokens found in environment variables")
+            print("💡 Add REPEAT_GG_PHP_SESSION, REPEAT_GG_HJ_SESSION, and REPEAT_GG_HJ_USER_SESSION to GitHub secrets")
             return False
         
-        print("Authenticating with session token...")
+        print("Authenticating with session tokens...")
         
         # Navigate to repeat.gg first
         driver.get("https://www.repeat.gg")
         time.sleep(3)
         
-        # Set multiple cookies that might be needed for authentication
-        cookies_to_set = [
-            {
-                'name': 'PHPSESSID',
-                'value': session_token,
-                'domain': 'www.repeat.gg',
-                'path': '/',
-                'secure': True,
-                'httpOnly': True
-            },
-            {
-                'name': 'PHPSESSID',
-                'value': session_token,
-                'domain': '.repeat.gg',
-                'path': '/',
-                'secure': True,
-                'httpOnly': True
-            },
-            {
+        # Set cookies with their correct values
+        cookies_to_set = []
+        
+        if php_session:
+            cookies_to_set.extend([
+                {
+                    'name': 'PHPSESSID',
+                    'value': php_session,
+                    'domain': 'www.repeat.gg',
+                    'path': '/',
+                    'secure': True,
+                    'httpOnly': True
+                },
+                {
+                    'name': 'PHPSESSID',
+                    'value': php_session,
+                    'domain': '.repeat.gg',
+                    'path': '/',
+                    'secure': True,
+                    'httpOnly': True
+                }
+            ])
+        
+        if hj_session:
+            cookies_to_set.append({
                 'name': '_hjSession_454244',
-                'value': session_token,
+                'value': hj_session,
                 'domain': '.repeat.gg',
                 'path': '/',
                 'secure': True,
                 'httpOnly': False
-            },
-            {
+            })
+        
+        if hj_user_session:
+            cookies_to_set.append({
                 'name': '_hjSessionUser_454244',
-                'value': session_token,
+                'value': hj_user_session,
                 'domain': '.repeat.gg',
                 'path': '/',
                 'secure': True,
                 'httpOnly': False
-            }
-        ]
+            })
         
         for cookie in cookies_to_set:
             try:
@@ -80,11 +90,14 @@ def authenticate_with_session_token(driver):
             except Exception as e:
                 print(f"⚠ Failed to set cookie for {cookie['domain']}: {e}")
         
-        # Also try setting it in localStorage as backup
+        # Also try setting them in localStorage as backup
         try:
-            driver.execute_script(f"localStorage.setItem('PHPSESSID', '{session_token}');")
-            driver.execute_script(f"localStorage.setItem('_hjSession_454244', '{session_token}');")
-            driver.execute_script(f"localStorage.setItem('_hjSessionUser_454244', '{session_token}');")
+            if php_session:
+                driver.execute_script(f"localStorage.setItem('PHPSESSID', '{php_session}');")
+            if hj_session:
+                driver.execute_script(f"localStorage.setItem('_hjSession_454244', '{hj_session}');")
+            if hj_user_session:
+                driver.execute_script(f"localStorage.setItem('_hjSessionUser_454244', '{hj_user_session}');")
             print("✓ Set session data in localStorage")
         except Exception as e:
             print(f"⚠ Failed to set localStorage: {e}")
@@ -111,7 +124,7 @@ def authenticate_with_session_token(driver):
                 return True
             else:
                 print("⚠ Authentication failed - still seeing login elements")
-                print("This might mean the session token has expired or is invalid")
+                print("This might mean the session tokens have expired or are invalid")
                 return False
         except Exception as e:
             print(f"⚠ Could not verify authentication: {e}")

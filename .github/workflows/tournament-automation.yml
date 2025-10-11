@@ -53,7 +53,9 @@ jobs:
       
       - name: Run tournament automation
         env:
-          REPEAT_GG_SESSION_TOKEN: ${{ secrets.REPEAT_GG_SESSION_TOKEN }}
+          REPEAT_GG_PHP_SESSION: ${{ secrets.REPEAT_GG_PHP_SESSION }}
+          REPEAT_GG_HJ_SESSION: ${{ secrets.REPEAT_GG_HJ_SESSION }}
+          REPEAT_GG_HJ_USER_SESSION: ${{ secrets.REPEAT_GG_HJ_USER_SESSION }}
           K_SERVICE: "github-actions"  # This triggers GitHub Actions mode in the script
           CHROMEDRIVER_PATH: "/usr/local/bin/chromedriver"
         run: |
