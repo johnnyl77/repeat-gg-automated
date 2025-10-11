@@ -112,6 +112,7 @@ The task will now run automatically at your scheduled times in the background!
 
 - **Runs in background:** When scheduled through Task Scheduler, the console runs in the background and won't steal focus from your current window
 - **For testing manually:** Just double-click `run_automation.bat` to see it work
+- **Pause toggle:** Edit `run_automation.bat` and set `PAUSE_ON_FINISH=1` to review results before closing, or `PAUSE_ON_FINISH=0` to auto-close
 - Set `HEADLESS_MODE = True` in the script (line 18) for invisible browser
 - Your computer must be on for the task to run
 - Check Task Scheduler's "History" tab to see if tasks ran successfully
