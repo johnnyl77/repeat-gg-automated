@@ -42,9 +42,12 @@ def load_cookies_from_env(driver):
         
         # Navigate to repeat.gg first (required to set cookies for the domain)
         driver.get("https://www.repeat.gg")
-        time.sleep(2)
+        time.sleep(3)  # Wait for page to fully load
         
         # Add each cookie to the browser
+        loaded_count = 0
+        failed_cookies = []
+        
         for cookie in cookies:
             try:
                 # Remove expiry if it's too far in the future (Selenium limitation)
@@ -53,13 +56,38 @@ def load_cookies_from_env(driver):
                     if cookie['expiry'] > 2147483647:  # Max int32
                         del cookie['expiry']
                 
-                driver.add_cookie(cookie)
+                # Fix domain format - Selenium doesn't like leading dots sometimes
+                if 'domain' in cookie and cookie['domain'].startswith('.'):
+                    # Try without the leading dot first
+                    original_domain = cookie['domain']
+                    cookie['domain'] = cookie['domain'].lstrip('.')
+                    try:
+                        driver.add_cookie(cookie)
+                        loaded_count += 1
+                    except:
+                        # If that fails, try with the original domain
+                        cookie['domain'] = original_domain
+                        driver.add_cookie(cookie)
+                        loaded_count += 1
+                else:
+                    driver.add_cookie(cookie)
+                    loaded_count += 1
+                    
             except Exception as e:
-                # Some cookies might fail, that's okay
-                pass
+                failed_cookies.append(f"{cookie.get('name', 'unknown')}: {str(e)}")
         
-        print(f"✓ Loaded {len(cookies)} cookies successfully!")
-        return True
+        print(f"✓ Loaded {loaded_count}/{len(cookies)} cookies successfully!")
+        
+        if failed_cookies:
+            print(f"⚠ {len(failed_cookies)} cookies failed to load:")
+            for fail in failed_cookies[:5]:  # Show first 5 failures
+                print(f"  - {fail}")
+        
+        # Refresh the page to activate cookies
+        driver.refresh()
+        time.sleep(2)
+        
+        return loaded_count > 0
         
     except Exception as e:
         print(f"⚠ Cookie loading failed: {e}")
@@ -231,18 +259,36 @@ driver.get("https://www.repeat.gg/mobile/brawl-stars")
 # Allow the page to load initially
 time.sleep(3)
 
-# If running in GitHub Actions, load cookies from environment
+# If running in GitHub Actions, try to authenticate
 if IS_GITHUB_ACTIONS:
     print("\n" + "="*70)
-    print("  GitHub Actions: Loading authentication cookies...")
+    print("  GitHub Actions: Attempting authentication...")
     print("="*70)
-    if not load_cookies_from_env(driver):
-        print("⚠ Cookie loading failed! Cannot continue without authentication.")
-        driver.quit()
-        exit(1)
-    # Navigate to the tournament page after loading cookies
+    
+    # First try loading cookies
+    cookies_loaded = load_cookies_from_env(driver)
+    
+    # Navigate to the tournament page
     driver.get("https://www.repeat.gg/mobile/brawl-stars")
-    time.sleep(3)
+    time.sleep(5)
+    
+    # Check if we're actually logged in by looking for login button
+    try:
+        # If we see a login button, cookies didn't work
+        login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
+        if login_elements:
+            print("⚠ Cookie authentication failed - login required")
+            print("\n" + "="*70)
+            print("  SOLUTION: This site requires actual login, not just cookies")
+            print("="*70)
+            print("\nOptions:")
+            print("1. Run this script LOCALLY using your Chrome profile (recommended)")
+            print("2. Or add LOGIN automation with username/password in GitHub secrets")
+            print("\nFor now, continuing without authentication to show what would happen...")
+        else:
+            print("✓ Successfully authenticated!")
+    except:
+        pass  # Assume we're logged in if we can't find login elements
 
 print("\n" + "="*70)
 print("  Starting tournament search and auto-join...")

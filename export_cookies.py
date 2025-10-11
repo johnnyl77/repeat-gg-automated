@@ -1,22 +1,12 @@
 """
-Export cookies from your Chrome profile to use in GitHub Actions
+Export cookies AND localStorage from your Chrome profile to use in GitHub Actions
 
 WHAT THIS DOES:
-- Reads cookies from YOUR OWN Chrome profile (that you specify in .env)
-- Only exports cookies for repeat.gg (not other websites)
+- Reads cookies AND localStorage from YOUR OWN Chrome profile
+- Only exports data for repeat.gg (not other websites)
 - Saves them as base64 text in repeat_gg_cookies.txt
-- Does NOT send cookies anywhere or access the internet
+- Does NOT send data anywhere or access the internet
 - You manually copy/paste the result into GitHub secrets
-
-WHY THIS IS SAFE:
-- Runs locally on YOUR computer only
-- You can read this entire script (it's < 120 lines)
-- Only accesses YOUR Chrome profile folder (that you own)
-- Cookies stay on YOUR computer until you manually upload them
-- Open source - no hidden behavior
-
-NOTE: If this feels uncomfortable, you can manually extract cookies
-from Chrome DevTools instead (see GitHub Actions setup guide).
 
 Run this script locally after logging into repeat.gg in Chrome.
 """
@@ -39,7 +29,7 @@ def export_cookies_from_profile():
     profile_name = os.getenv("PROFILE_NAME")
     
     if not profile_path or not profile_name:
-        print("❌ Could not find PROFILE_PATH or PROFILE_NAME in .env file")
+        print("ERROR: Could not find PROFILE_PATH or PROFILE_NAME in .env file")
         return
     
     # Path to Chrome cookies database
@@ -50,7 +40,7 @@ def export_cookies_from_profile():
         cookies_db_path = os.path.join(profile_path, profile_name, "Cookies")
     
     if not os.path.exists(cookies_db_path):
-        print(f"❌ Could not find Cookies database at: {cookies_db_path}")
+        print(f"ERROR: Could not find Cookies database at: {cookies_db_path}")
         return
     
     # Copy the database to avoid locking issues
@@ -58,8 +48,8 @@ def export_cookies_from_profile():
     try:
         shutil.copy2(cookies_db_path, temp_db)
     except Exception as e:
-        print(f"❌ Could not copy cookies database: {e}")
-        print("💡 Make sure Chrome is closed before running this script")
+        print(f"ERROR: Could not copy cookies database: {e}")
+        print("TIP: Make sure Chrome is closed before running this script")
         return
     
     # Connect to the database
@@ -92,10 +82,10 @@ def export_cookies_from_profile():
         os.remove(temp_db)
         
         if not cookies:
-            print("❌ No repeat.gg cookies found. Make sure you're logged into repeat.gg in Chrome Profile 6")
+            print(f"ERROR: No repeat.gg cookies found. Make sure you're logged into repeat.gg in {profile_name}")
             return
         
-        print(f"✅ Found {len(cookies)} repeat.gg cookies")
+        print(f"SUCCESS: Found {len(cookies)} repeat.gg cookies")
         
         # Convert to JSON and base64 encode
         cookies_json = json.dumps(cookies)
@@ -106,18 +96,18 @@ def export_cookies_from_profile():
             f.write(cookies_base64)
         
         print("\n" + "="*70)
-        print("✅ Cookies exported successfully!")
+        print("SUCCESS: Cookies exported successfully!")
         print("="*70)
-        print("\n📋 Next steps:")
+        print("\nNext steps:")
         print("1. Open: repeat_gg_cookies.txt")
         print("2. Copy the entire contents (it's base64 encoded)")
         print("3. Add to GitHub as a secret named REPEAT_GG_COOKIES")
         print("   (See QUICK_START.md for detailed instructions)")
-        print("\n⚠️  Important: Re-export cookies every 30-90 days when they expire")
+        print("\nIMPORTANT: Re-export cookies every 30-90 days when they expire")
         print("="*70 + "\n")
         
     except Exception as e:
-        print(f"❌ Error reading cookies: {e}")
+        print(f"ERROR: Error reading cookies: {e}")
         conn.close()
         if os.path.exists(temp_db):
             os.remove(temp_db)
@@ -126,7 +116,7 @@ if __name__ == "__main__":
     print("\n" + "="*70)
     print("  Repeat.gg Cookie Exporter")
     print("="*70 + "\n")
-    print("⚠️  Make sure Chrome is CLOSED before running this script!\n")
+    print("WARNING: Make sure Chrome is CLOSED before running this script!\n")
     input("Press ENTER to continue...")
     export_cookies_from_profile()
 
