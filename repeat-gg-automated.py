@@ -37,32 +37,63 @@ def authenticate_with_session_token(driver):
         driver.get("https://www.repeat.gg")
         time.sleep(3)
         
-        # Set the session token as a cookie (most reliable method)
-        driver.add_cookie({
-            'name': 'PHPSESSID',
-            'value': session_token,
-            'domain': 'www.repeat.gg',
-            'path': '/',
-            'secure': True,
-            'httpOnly': True
-        })
+        # Set multiple cookies that might be needed for authentication
+        cookies_to_set = [
+            {
+                'name': 'PHPSESSID',
+                'value': session_token,
+                'domain': 'www.repeat.gg',
+                'path': '/',
+                'secure': True,
+                'httpOnly': True
+            },
+            {
+                'name': 'PHPSESSID',
+                'value': session_token,
+                'domain': '.repeat.gg',
+                'path': '/',
+                'secure': True,
+                'httpOnly': True
+            }
+        ]
+        
+        for cookie in cookies_to_set:
+            try:
+                driver.add_cookie(cookie)
+                print(f"✓ Set cookie: {cookie['name']} for domain: {cookie['domain']}")
+            except Exception as e:
+                print(f"⚠ Failed to set cookie for {cookie['domain']}: {e}")
+        
+        # Also try setting it in localStorage as backup
+        try:
+            driver.execute_script(f"localStorage.setItem('PHPSESSID', '{session_token}');")
+            print("✓ Set PHPSESSID in localStorage")
+        except Exception as e:
+            print(f"⚠ Failed to set localStorage: {e}")
         
         # Refresh to activate authentication
         driver.refresh()
-        time.sleep(3)
+        time.sleep(5)
         
-        # Verify authentication
+        # Navigate to the tournament page to test authentication
+        driver.get("https://www.repeat.gg/mobile/brawl-stars")
+        time.sleep(5)
+        
+        # Check if we're logged in by looking for user-specific elements
         try:
-            driver.get("https://www.repeat.gg/mobile/brawl-stars")
-            time.sleep(3)
-            
-            # Check if we're logged in by looking for login elements
+            # Look for elements that indicate we're logged in
+            user_elements = driver.find_elements(By.XPATH, "//*[contains(@class, 'user') or contains(@class, 'profile') or contains(@class, 'avatar')]")
             login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
-            if not login_elements:
+            
+            if not login_elements and len(user_elements) > 0:
                 print("✓ Successfully authenticated!")
+                return True
+            elif not login_elements:
+                print("✓ No login elements found - assuming authenticated")
                 return True
             else:
                 print("⚠ Authentication failed - still seeing login elements")
+                print("This might mean the PHPSESSID has expired or is invalid")
                 return False
         except Exception as e:
             print(f"⚠ Could not verify authentication: {e}")
