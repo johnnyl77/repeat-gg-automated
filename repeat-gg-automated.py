@@ -54,6 +54,22 @@ def authenticate_with_session_token(driver):
                 'path': '/',
                 'secure': True,
                 'httpOnly': True
+            },
+            {
+                'name': '_hjSession_454244',
+                'value': session_token,
+                'domain': '.repeat.gg',
+                'path': '/',
+                'secure': True,
+                'httpOnly': False
+            },
+            {
+                'name': '_hjSessionUser_454244',
+                'value': session_token,
+                'domain': '.repeat.gg',
+                'path': '/',
+                'secure': True,
+                'httpOnly': False
             }
         ]
         
@@ -67,7 +83,9 @@ def authenticate_with_session_token(driver):
         # Also try setting it in localStorage as backup
         try:
             driver.execute_script(f"localStorage.setItem('PHPSESSID', '{session_token}');")
-            print("✓ Set PHPSESSID in localStorage")
+            driver.execute_script(f"localStorage.setItem('_hjSession_454244', '{session_token}');")
+            driver.execute_script(f"localStorage.setItem('_hjSessionUser_454244', '{session_token}');")
+            print("✓ Set session data in localStorage")
         except Exception as e:
             print(f"⚠ Failed to set localStorage: {e}")
         
@@ -93,7 +111,7 @@ def authenticate_with_session_token(driver):
                 return True
             else:
                 print("⚠ Authentication failed - still seeing login elements")
-                print("This might mean the PHPSESSID has expired or is invalid")
+                print("This might mean the session token has expired or is invalid")
                 return False
         except Exception as e:
             print(f"⚠ Could not verify authentication: {e}")
