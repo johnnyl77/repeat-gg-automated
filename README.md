@@ -4,62 +4,33 @@
 
 # Repeat.gg Automated
 
-Automatically join free tournaments on repeat.gg. 
+Automatically join free tournaments on repeat.gg. Runs 24/7 on GitHub's servers for free (no PC needed, no credit card required).
 
-## 🎯 Two Ways to Use
+## 🚀 Quick Start
 
-### Option 1: Local (Your Computer) - 2 Minute Setup!
+**[👉 Follow the QUICK_START.md guide](QUICK_START.md)** ← 5 minute setup!
 
-✅ **Super Easy** - Just run setup script and log in  
-✅ **Reliable** - Uses your actual Chrome session  
-✅ **Full Control** - Watch it work on your PC  
-
-**Quick Setup:**
-1. Install dependencies: `pip install -r requirements.txt`
-2. Run setup: `python setup_profile.py`
-3. Log into repeat.gg when browser opens
-4. Run automation: `python repeat-gg-automated.py`
-
-### Option 2: Cloud (GitHub Actions - 24/7)
-
-**[👉 Follow GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)** ← 5 minute setup!
-
-✅ **100% Free** - No payment info required  
-✅ **Automatic** - Runs every 6 hours, 24/7  
-✅ **No PC Needed** - Runs on GitHub's servers  
-✅ **Set and Forget** - Just check results  
+Or read the detailed guide: **[GITHUB_ACTIONS_SETUP.md](GITHUB_ACTIONS_SETUP.md)**
 
 ---
 
 ## ✨ Features
 
-✅ Auto-joins free tournaments (no password required)  
-✅ Auto-claims all prizes  
-✅ Supports all games on repeat.gg  
-✅ Headless mode option (invisible browser)  
-✅ Detailed logging of what was joined  
+✅ **100% Free** - No payment info required  
+✅ **Automatic** - Runs every 6 hours  
+✅ **Cloud-based** - No local computer needed  
+✅ **Easy Setup** - Just upload to GitHub  
 
 ---
 
-## 📝 Detailed Local Setup
+## 📝 Setup Summary
 
-1. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+1. Get your PHPSESSID from repeat.gg cookies
+2. Upload code to GitHub
+3. Add PHPSESSID as REPEAT_GG_SESSION_TOKEN secret
+4. Enable GitHub Actions
 
-2. **Run the setup script:**
-   ```bash
-   python setup_profile.py
-   ```
-   This will open Chrome. Log into repeat.gg, then press Enter in the terminal.
-
-3. **Run the automation:**
-   ```bash
-   python repeat-gg-automated.py
-   ```
-
-**That's it!** Your login is saved and will be reused automatically.
+**That's it!** See [QUICK_START.md](QUICK_START.md) for step-by-step instructions.
 
 ---
 

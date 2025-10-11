@@ -53,9 +53,6 @@ jobs:
       
       - name: Run tournament automation
         env:
-          # Recommended: Use complete auth data (export_auth_for_github.py)
-          REPEAT_GG_AUTH_DATA: ${{ secrets.REPEAT_GG_AUTH_DATA }}
-          # Fallback: Individual cookies (less reliable)
           REPEAT_GG_PHP_SESSION: ${{ secrets.REPEAT_GG_PHP_SESSION }}
           REPEAT_GG_HJ_SESSION: ${{ secrets.REPEAT_GG_HJ_SESSION }}
           REPEAT_GG_HJ_USER_SESSION: ${{ secrets.REPEAT_GG_HJ_USER_SESSION }}

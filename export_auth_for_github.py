@@ -77,27 +77,33 @@ try:
     print(f"\n✓ Found {len(all_cookies)} total cookies")
     print(f"✓ Keeping {len(essential_cookies)} essential cookies (filtered out tracking cookies)")
     
-    # Only include critical localStorage items (filter out large/unnecessary items)
+    # Get ALL localStorage items (don't filter - we need them all!)
     local_storage = driver.execute_script("""
         let items = {};
         for (let i = 0; i < localStorage.length; i++) {
             let key = localStorage.key(i);
-            let value = localStorage.getItem(key);
-            // Only include items smaller than 5KB and authentication-related
-            if (value.length < 5000 && 
-                (key.includes('session') || key.includes('auth') || key.includes('user') || 
-                 key.includes('token') || key.includes('login'))) {
-                items[key] = value;
-            }
+            items[key] = localStorage.getItem(key);
         }
         return items;
     """)
-    print(f"✓ Found {len(local_storage)} essential localStorage items (filtered)")
+    print(f"✓ Found {len(local_storage)} localStorage items")
     
-    # Create compact auth data package
+    # Get sessionStorage too
+    session_storage = driver.execute_script("""
+        let items = {};
+        for (let i = 0; i < sessionStorage.length; i++) {
+            let key = sessionStorage.key(i);
+            items[key] = sessionStorage.getItem(key);
+        }
+        return items;
+    """)
+    print(f"✓ Found {len(session_storage)} sessionStorage items")
+    
+    # Create auth data package
     auth_data = {
         "cookies": essential_cookies,
-        "localStorage": local_storage
+        "localStorage": local_storage,
+        "sessionStorage": session_storage
     }
     
     # Convert to JSON string
@@ -110,11 +116,30 @@ try:
     size_bytes = len(auth_base64)
     size_kb = size_bytes / 1024
     
-    print(f"\n✓ Compact auth data size: {size_kb:.2f} KB")
+    print(f"\n✓ Auth data size: {size_kb:.2f} KB")
     
     if size_kb > 64:
-        print("\n⚠ WARNING: Data is still larger than 64KB!")
-        print("   GitHub may still reject this. We'll save it anyway.")
+        print("\n⚠ WARNING: Data is larger than 64KB!")
+        print("   Trying to compress by removing large items...")
+        
+        # Try removing large localStorage items
+        filtered_local_storage = {k: v for k, v in local_storage.items() if len(v) < 10000}
+        
+        auth_data_compressed = {
+            "cookies": essential_cookies,
+            "localStorage": filtered_local_storage,
+            "sessionStorage": session_storage
+        }
+        
+        auth_json = json.dumps(auth_data_compressed, separators=(',', ':'))
+        auth_base64 = base64.b64encode(auth_json.encode()).decode()
+        size_bytes = len(auth_base64)
+        size_kb = size_bytes / 1024
+        
+        print(f"✓ Compressed to: {size_kb:.2f} KB (removed items > 10KB)")
+        
+        if size_kb > 64:
+            print("\n⚠ Still too large! Saving anyway, but GitHub may reject it.")
     else:
         print("✓ Size is within GitHub's 64KB limit!")
     
@@ -133,20 +158,19 @@ try:
         f.write("1. Go to your GitHub repo -> Settings -> Secrets -> Actions\n")
         f.write("2. Click 'New repository secret'\n")
         f.write("3. Name: REPEAT_GG_AUTH_DATA\n")
-        f.write("4. Value: Copy the long string above\n")
+        f.write("4. Value: Copy the long string above (just the base64, not the headers)\n")
         f.write("5. Click 'Add secret'\n")
         f.write("="*70 + "\n")
     
     print("\n" + "="*70)
     print("  SUCCESS!")
     print("="*70)
-    print(f"\n✓ Compact auth data saved to: {output_file}")
+    print(f"\n✓ Auth data saved to: {output_file}")
     print("\nNext steps:")
     print(f"   1. Open {output_file}")
-    print("   2. Copy the base64 string")
-    print("   3. Add it as REPEAT_GG_AUTH_DATA secret in GitHub")
-    print("\nThis compact version includes only essential cookies!")
-    print("   It should fit within GitHub's 64KB limit.\n")
+    print("   2. Copy ONLY the base64 string (the long line)")
+    print("   3. Update REPEAT_GG_AUTH_DATA secret in GitHub")
+    print("\nThis includes ALL cookies and storage for full authentication!\n")
     
     # Also save as JSON for debugging
     debug_file = "github_auth_data_debug.json"

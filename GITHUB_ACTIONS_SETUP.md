@@ -35,21 +35,12 @@ git remote add origin https://github.com/YOUR_USERNAME/repeat-gg-automated.git
 git push -u origin main
 ```
 
-### 4. Export Your Authentication Data (NEW METHOD - More Reliable!)
-
-**First, set up locally:**
-1. Run `pip install -r requirements.txt`
-2. Run `python setup_profile.py` and log into repeat.gg
-3. Run `python export_auth_for_github.py`
-
-This creates `github_auth_data.txt` with your complete authentication (all cookies + storage).
-
-**Then, add to GitHub:**
+### 4. Add Your Cookies as a Secret
 1. In your GitHub repo, click **"Settings"** tab
 2. Click **"Secrets and variables"** → **"Actions"** (in left sidebar)
 3. Click **"New repository secret"**
-4. Name: `REPEAT_GG_AUTH_DATA`
-5. Value: Copy the entire base64 string from `github_auth_data.txt`
+4. Name: `REPEAT_GG_COOKIES`
+5. Value: Copy the entire contents from `repeat_gg_cookies.txt`
 6. Click **"Add secret"**
 
 ### 5. Enable GitHub Actions
@@ -98,15 +89,13 @@ Edit `.github/workflows/tournament-automation.yml` line 6:
 
 Cron format: `minute hour day month weekday`
 
-## 🔄 Updating Authentication (when it expires)
+## 🔄 Updating Cookies (when they expire)
 
-1. Locally, run `python export_auth_for_github.py`
-2. Copy the base64 string from `github_auth_data.txt`
+1. Run `python export_cookies.py` locally
+2. Copy contents of `repeat_gg_cookies.txt`
 3. Go to repo **Settings** → **Secrets and variables** → **Actions**
-4. Click on `REPEAT_GG_AUTH_DATA` → **Update**
-5. Paste new auth data → **Update secret**
-
-💡 **This method is much more reliable** than copying individual cookies because it includes ALL authentication data!
+4. Click on `REPEAT_GG_COOKIES` → **Update**
+5. Paste new cookies → **Update secret**
 
 ## ⏸️ Pause/Stop Automation
 
@@ -124,16 +113,11 @@ Just delete the `.github` folder from your repository
 ## 🐛 Troubleshooting
 
 **"No tournaments found"**
-- Your authentication might have expired - update it using `export_auth_for_github.py` (see above)
+- Your cookies might have expired - update them (see above)
 
 **"Workflow failed"**
 - Click on the failed run in Actions tab to see error details
-- Most likely: authentication expired - re-run `export_auth_for_github.py` and update the secret
-
-**"Authentication failed" in logs**
-- Re-export your auth data: `python export_auth_for_github.py`
-- Make sure you're logged into repeat.gg in your local browser
-- Update the `REPEAT_GG_AUTH_DATA` secret in GitHub
+- Most likely: cookies expired
 
 **Want to change games?**
 Edit `repeat-gg-automated.py` line 224:
