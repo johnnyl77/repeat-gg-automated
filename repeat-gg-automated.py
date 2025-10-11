@@ -6,8 +6,8 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 import re
 import os
-import signal
-import subprocess
+import json
+import base64
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,16 +22,89 @@ HEADLESS_MODE = True  # Change to False to see the browser while it works
 IS_GITHUB_ACTIONS = os.getenv("K_SERVICE") is not None  # Set by cloud environments
 
 def authenticate_with_session_token(driver):
-    """Authenticate using session token from environment variable"""
+    """Authenticate using complete auth data or individual cookies from environment variable"""
     try:
-        # Get individual cookie values from environment variables
+        # Check for complete auth data first (new method - more reliable)
+        auth_data_b64 = os.getenv("REPEAT_GG_AUTH_DATA")
+        
+        if auth_data_b64:
+            print("Using complete authentication data (recommended method)...")
+            try:
+                # Decode base64 and parse JSON
+                auth_json = base64.b64decode(auth_data_b64).decode()
+                auth_data = json.loads(auth_json)
+                
+                # Navigate to repeat.gg first
+                driver.get("https://www.repeat.gg")
+                time.sleep(3)
+                
+                # Set all cookies
+                cookies = auth_data.get("cookies", [])
+                for cookie in cookies:
+                    try:
+                        # Remove problematic keys that Selenium doesn't accept
+                        cookie_to_add = {k: v for k, v in cookie.items() if k not in ['sameSite', 'expiry']}
+                        driver.add_cookie(cookie_to_add)
+                    except Exception as e:
+                        # Skip cookies that can't be set
+                        pass
+                
+                print(f"✓ Set {len(cookies)} cookies")
+                
+                # Set localStorage
+                local_storage = auth_data.get("localStorage", {})
+                for key, value in local_storage.items():
+                    try:
+                        # Escape single quotes in the value
+                        escaped_value = value.replace("'", "\\'").replace("\n", "\\n")
+                        driver.execute_script(f"localStorage.setItem('{key}', '{escaped_value}');")
+                    except:
+                        pass
+                
+                print(f"✓ Set {len(local_storage)} localStorage items")
+                
+                # Set sessionStorage
+                session_storage = auth_data.get("sessionStorage", {})
+                for key, value in session_storage.items():
+                    try:
+                        escaped_value = value.replace("'", "\\'").replace("\n", "\\n")
+                        driver.execute_script(f"sessionStorage.setItem('{key}', '{escaped_value}');")
+                    except:
+                        pass
+                
+                print(f"✓ Set {len(session_storage)} sessionStorage items")
+                
+                # Refresh to activate authentication
+                driver.refresh()
+                time.sleep(5)
+                
+                # Navigate to tournament page
+                driver.get("https://www.repeat.gg/mobile/brawl-stars")
+                time.sleep(5)
+                
+                # Check authentication
+                login_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Log in') or contains(text(), 'Sign in') or contains(text(), 'Login')]")
+                
+                if not login_elements:
+                    print("✓ Successfully authenticated with complete auth data!")
+                    return True
+                else:
+                    print("⚠ Complete auth data method failed - login elements still present")
+                    return False
+                    
+            except Exception as e:
+                print(f"⚠ Error using complete auth data: {e}")
+                print("Falling back to individual cookies method...")
+        
+        # Fallback to individual cookies (old method - less reliable)
         php_session = os.getenv("REPEAT_GG_PHP_SESSION")
         hj_session = os.getenv("REPEAT_GG_HJ_SESSION")
         hj_user_session = os.getenv("REPEAT_GG_HJ_USER_SESSION")
         
         if not any([php_session, hj_session, hj_user_session]):
             print("⚠ No session tokens found in environment variables")
-            print("💡 Add REPEAT_GG_PHP_SESSION, REPEAT_GG_HJ_SESSION, and REPEAT_GG_HJ_USER_SESSION to GitHub secrets")
+            print("💡 Run export_auth_for_github.py locally and add REPEAT_GG_AUTH_DATA to GitHub secrets")
+            print("   (Or add individual cookies: REPEAT_GG_PHP_SESSION, REPEAT_GG_HJ_SESSION, REPEAT_GG_HJ_USER_SESSION)")
             return False
         
         print("Authenticating with session tokens...")
