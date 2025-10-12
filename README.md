@@ -80,9 +80,8 @@ You can set this up to run automatically in the background every few hours using
    ![Image of Triggers Tab](imgs/img6.png)
    
    - Configure your trigger settings (choose what works for you):
-     - Begin the task: `On a schedule` or `Daily`
-     - Set your preferred start time
-     - Repeat task every: `6 hours` (or your preferred interval)
+     - Begin the task: `At log on`
+     - Repeat task every: `1 hour` (or your preferred interval)
      - For a duration of: `Indefinitely`
    
    ![Image of Trigger Settings](imgs/img7.png)
@@ -106,7 +105,7 @@ You can set this up to run automatically in the background every few hours using
 
 7. **Click OK to save the task**
 
-The task will now run automatically at your scheduled times in the background!
+The task will now run automatically whenever you startup your PC in the background!
 
 ### Tips:
 

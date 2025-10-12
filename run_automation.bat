@@ -1,6 +1,6 @@
 @echo off
 REM Set to 1 to pause and review results, 0 to auto-close
-set PAUSE_ON_FINISH=1
+set PAUSE_ON_FINISH=0
 
 cd /d "%~dp0"
 if "%PAUSE_ON_FINISH%"=="1" (
