@@ -177,6 +177,8 @@ free_tourneys = 0
 
 # Loop through each game
 for game_index, game in enumerate(GAMES_LIST, 1):
+    # Initialize counter for this specific game
+    game_successful_joins = 0
     print("\n" + "="*70)
     print(f"  [{game_index}/{len(GAMES_LIST)}] Checking {game['name']}...")
     print("="*70)
@@ -238,95 +240,135 @@ for game_index, game in enumerate(GAMES_LIST, 1):
     for i in range(1, len(window_handles)):
         try:
             driver.switch_to.window(window_handles[i])
-
-            # Check if the entry is free
-            fee_label = driver.find_element(By.CLASS_NAME, 'entryFee')
             
-            if "Free Entry" in fee_label.get_attribute("outerHTML"):
-                print(f"Processing tournament in tab {i} for {game['name']}")
+            # Wait for the page to load
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "body"))
+                )
+            except:
+                print(f"Page in tab {i} didn't load properly, skipping...")
+                continue
 
-                # Tourney Name
-                tourney_header = driver.find_element(By.CSS_SELECTOR, '[data-testid="tournament header"]')
+            # Since we already verified these are free tournaments, proceed directly
+            print(f"Processing tournament in tab {i} for {game['name']}")
+
+            # Double-check that this is still a free entry tournament on the individual page
+            try:
+                page_html = driver.page_source
+                if "Free Entry" not in page_html:
+                    print(f"Tournament in tab {i} is not free entry, skipping...")
+                    continue
+            except Exception as e:
+                print(f"Error checking entry fee status: {e}")
+
+            # Wait for tournament header to load
+            try:
+                tourney_header = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, '[data-testid="tournament header"]'))
+                )
+            except:
+                print(f"Tournament header not found in tab {i}, skipping...")
+                continue
+
+            # Tourney Name
+            try:
                 tourney_name = tourney_header.find_element(By.TAG_NAME, 'h1')
                 print("Tournament Name: " + tourney_name.get_attribute("innerHTML"))
+            except Exception as e:
+                print(f"Error finding tournament name: {e}")
 
-                # Tourney Duration
-                try:
-                    duration_div = tourney_header.find_element(By.XPATH, '//div[@data-notranslate="true" and contains(., "•")]')
-                    duration_html = duration_div.get_attribute('innerHTML')
-                    date_pattern = r'\b[A-Za-z]+\s\d{1,2}(?:st|nd|rd|th)?\s•\s\d{1,2}:\d{2}\s[APM]{2}\b'
-                    matches = re.findall(date_pattern, duration_html)
-                    
-                    if matches:
-                        print("Dates: " + ' ⟶ '.join(matches))
-                    else:
-                        print("No dates found.")
-                except Exception as e:
-                    print(f"Error finding duration: {e}")
-
-                # Prize Pool
-                try:
-                    prize_pool_element = driver.find_element(By.XPATH, '//div[contains(@class, "prizePool")]')
-                    
-                    try:
-                        # Check for USD prize
-                        span_element = prize_pool_element.find_element(By.XPATH, './/span[@data-testid="USD"]')
-                        img_element = span_element.find_element(By.XPATH, './/img[@alt="dollar"]')
-                        prize_text = span_element.text.strip()
-                        print("USD: " + prize_text)
-                    
-                    except:
-                        try:
-                            # Check for Coins prize 
-                            span_element = prize_pool_element.find_element(By.XPATH, './/span[@data-testid="PM"]')
-                            img_element = span_element.find_element(By.XPATH, './/img[@alt="coins"]')
-                            prize_text = span_element.text.strip()
-                            print("Coins: " + prize_text)
-                        
-                        except Exception as e:
-                            print(f"Error finding prize pool: {e}")
+            # Tourney Duration
+            try:
+                duration_div = tourney_header.find_element(By.XPATH, '//div[@data-notranslate="true" and contains(., "•")]')
+                duration_html = duration_div.get_attribute('innerHTML')
+                date_pattern = r'\b[A-Za-z]+\s\d{1,2}(?:st|nd|rd|th)?\s•\s\d{1,2}:\d{2}\s[APM]{2}\b'
+                matches = re.findall(date_pattern, duration_html)
                 
-                except Exception as e:
-                    print(f"Error processing prize pool: {e}")
+                if matches:
+                    print("Dates: " + ' ⟶ '.join(matches))
+                else:
+                    print("No dates found.")
+            except Exception as e:
+                print(f"Error finding duration: {e}")
 
-                # Join Button
+            # Prize Pool
+            try:
+                prize_pool_element = driver.find_element(By.XPATH, '//div[contains(@class, "prizePool")]')
+                
                 try:
-                    # Find and click the join button
-                    join_button = tourney_header.find_element(By.TAG_NAME, 'button')
-                    join_button.click()
-                    time.sleep(1) #prev 3s
-                    
-                    # Checks to see if there is an error msg when joining tourney
+                    # Check for USD prize
+                    span_element = prize_pool_element.find_element(By.XPATH, './/span[@data-testid="USD"]')
+                    img_element = span_element.find_element(By.XPATH, './/img[@alt="dollar"]')
+                    prize_text = span_element.text.strip()
+                    print("USD: " + prize_text)
+                
+                except:
                     try:
-                        modal_element = driver.find_element(By.CLASS_NAME, 'MuiDialog-container')
-                        
-                        if modal_element:
-                            print("\nJoin Unsuccessful")
-
-                            # Print the contents of the h2 tag (Header of Reason for not being able to join tourney)
-                            try:
-                                h2_element = modal_element.find_element(By.TAG_NAME, 'h2')
-                                print("Reason: " + h2_element.text)
-                            except Exception as e:
-                                print(f"Error finding reason: {e}")
-                            
-                            # Print the contents of all p tags (Explanation to Reason for not being able to join tourney)
-                            try:
-                                p_elements = modal_element.find_elements(By.TAG_NAME, 'p')
-                                for p in p_elements:
-                                    print(p.text)
-                                print('\n|--------------------------------------------------------------------|')
-                            except Exception as e:
-                                print(f"Error finding explanation for reason: {e}")
+                        # Check for Coins prize 
+                        span_element = prize_pool_element.find_element(By.XPATH, './/span[@data-testid="PM"]')
+                        img_element = span_element.find_element(By.XPATH, './/img[@alt="coins"]')
+                        prize_text = span_element.text.strip()
+                        print("Coins: " + prize_text)
+                    
                     except Exception as e:
-                        # If the modal is not found, the join was successful
-                        free_tourneys += 1
-                        print("Successfully Joined Tourney")
-                        print('|--------------------------------------------------------------------|')
-                except Exception as e:
-                    print(f"Error clicking join button: {e}")
-                    print('|--------------------------------------------------------------------|')
+                        print(f"Error finding prize pool: {e}")
+            
+            except Exception as e:
+                print(f"Error processing prize pool: {e}")
+
+            # Join Button
+            try:
+                # Find and click the join button - look for button containing "Join Tournament" text
+                try:
+                    join_button = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Join Tournament')]"))
+                    )
+                except:
+                    # Fallback: look for button with "Join Tournament" in any child element
+                    join_button = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.XPATH, "//button[.//text()[contains(., 'Join Tournament')]]"))
+                    )
+                
+                join_button.click()
                 time.sleep(1) #prev 3s
+                
+                # Checks to see if there is an error msg when joining tourney
+                try:
+                    # Wait a moment for any modal to appear
+                    time.sleep(2)
+                    modal_element = WebDriverWait(driver, 3).until(
+                        EC.presence_of_element_located((By.CLASS_NAME, 'MuiDialog-container'))
+                    )
+                    
+                    if modal_element:
+                        print("\nJoin Unsuccessful")
+
+                        # Print the contents of the h2 tag (Header of Reason for not being able to join tourney)
+                        try:
+                            h2_element = modal_element.find_element(By.TAG_NAME, 'h2')
+                            print("Reason: " + h2_element.text)
+                        except Exception as e:
+                            print(f"Error finding reason: {e}")
+                        
+                        # Print the contents of all p tags (Explanation to Reason for not being able to join tourney)
+                        try:
+                            p_elements = modal_element.find_elements(By.TAG_NAME, 'p')
+                            for p in p_elements:
+                                print(p.text)
+                            print('\n|--------------------------------------------------------------------|')
+                        except Exception as e:
+                            print(f"Error finding explanation for reason: {e}")
+                except Exception as e:
+                    # If the modal is not found, the join was successful
+                    free_tourneys += 1
+                    game_successful_joins += 1
+                    print("Successfully Joined Tourney")
+                    print('|--------------------------------------------------------------------|')
+            except Exception as e:
+                print(f"Error clicking join button: {e}")
+                print('|--------------------------------------------------------------------|')
+            time.sleep(1) #prev 3s
 
         except Exception as e:
             print(f"Error processing tournament in tab {i}: {e}")
@@ -338,6 +380,9 @@ for game_index, game in enumerate(GAMES_LIST, 1):
         driver.close()
 
     driver.switch_to.window(window_handles[0])
+    
+    # Display summary for this game
+    print(f"\n{game['name']} Summary: {game_successful_joins} tournament(s) successfully joined")
 
 print("\nTourneys Joined this Session: " + str(free_tourneys))
 
@@ -423,44 +468,59 @@ try:
                 
                 # Find and click the "Claim Prize" button
                 try:
-                    claim_button = article.find_element(By.CSS_SELECTOR, "button.mui-i6q8cd.tss-zagdkk-core-md-fill-roundCorners")
-                    
-                    # Check if button is enabled
-                    is_disabled = claim_button.get_attribute("disabled")
-                    btn_text = claim_button.text.strip()
-                    
-                    print(f"Button text: '{btn_text}'")
-                    
-                    if not is_disabled and btn_text == "Claim Prize":
+                    # Skip if this prize is already claimed
+                    try:
+                        already_claimed_btns = article.find_elements(By.XPATH, ".//button[contains(normalize-space(.), 'Already Claimed')]")
+                        if already_claimed_btns or ("Already Claimed" in article.text):
+                            print("Skipping: Already Claimed")
+                            continue
+                    except Exception:
+                        pass
+
+                    # Prefer a stable XPath by text and enabled state scoped to the article
+                    claim_button = None
+                    try:
+                        claim_button = WebDriverWait(article, 2).until(
+                            EC.element_to_be_clickable((By.XPATH, ".//button[normalize-space()='Claim Prize' and not(@disabled)]"))
+                        )
+                    except Exception:
                         try:
-                            # Scroll the button into view
-                            driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", claim_button)
-                            time.sleep(0.5)
-                            
-                            # Try regular click first
+                            claim_button = WebDriverWait(article, 2).until(
+                                EC.element_to_be_clickable((By.XPATH, ".//button[contains(normalize-space(.), 'Claim Prize') and not(@disabled)]"))
+                            )
+                        except Exception:
+                            # Final fallback: find by contains and verify enabled state manually
+                            buttons = article.find_elements(By.XPATH, ".//button[contains(normalize-space(.), 'Claim Prize')]")
+                            for btn in buttons:
+                                if not btn.get_attribute("disabled"):
+                                    claim_button = btn
+                                    break
+
+                    if claim_button is None:
+                        print("⚠ No enabled 'Claim Prize' button found for this prize")
+                    else:
+                        # Scroll into view and click
+                        try:
+                            driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", claim_button)
+                            time.sleep(0.2)
                             claim_button.click()
                             print("✓ Successfully clicked 'Claim Prize' button!")
-                            
+
                             # Add to totals
                             total_claimed_value += prize_value
                             claimed_count += 1
-                            
-                            time.sleep(1)  # Wait between clicks
-                            
+
+                            time.sleep(0.6)
                         except Exception as e:
-                            # If regular click fails, try JavaScript click
                             print(f"Regular click failed ({e}), trying JavaScript click...")
                             driver.execute_script("arguments[0].click();", claim_button)
                             print("✓ Successfully clicked 'Claim Prize' button using JavaScript!")
-                            
+
                             # Add to totals
                             total_claimed_value += prize_value
                             claimed_count += 1
-                            
-                            time.sleep(1)  # Wait between clicks
-                    else:
-                        print(f"⚠ Button is disabled or text doesn't match: '{btn_text}'")
-                        
+
+                            time.sleep(0.6)
                 except Exception as e:
                     print(f"⚠ Could not find or click 'Claim Prize' button: {e}")
                     
